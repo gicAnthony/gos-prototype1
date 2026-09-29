@@ -1,5 +1,6 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+import { useEffect,useState } from "react";
+import { useRouter } from "next/navigation";
 import { demoUser } from "@/lib/demo-data";
 import { TenantSelector } from "@/components/tenant-selector";
-export default async function Page(){const c=await cookies();if(c.get("gos_session")?.value!=="demo-session")redirect("/login");if(demoUser.tenants.length===1)redirect("/workspace");return <TenantSelector user={demoUser}/>}
+export default function Page(){const router=useRouter(),[ready,setReady]=useState(false);useEffect(()=>{if(localStorage.getItem("gos_session")!=="demo-session")router.replace("/login");else if(demoUser.tenants.length===1)router.replace("/workspace");else setReady(true)},[router]);return ready?<TenantSelector user={demoUser}/>:null}
