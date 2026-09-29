@@ -16,7 +16,7 @@ db.exec(`
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const seed = db.transaction(() => {
   db.prepare("INSERT OR IGNORE INTO users (id,name,email,password_hash) VALUES (1,?,?,?)").run(demoUser.name, DEMO_EMAIL, hash(DEMO_PASSWORD));
-  const tenantStmt = db.prepare("INSERT OR IGNORE INTO tenants (id,name,short_name,location,deployment) VALUES (?,?,?,?,?)");
+  const tenantStmt = db.prepare("INSERT INTO tenants (id,name,short_name,location,deployment) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, short_name=excluded.short_name, location=excluded.location, deployment=excluded.deployment");
   const memberStmt = db.prepare("INSERT OR IGNORE INTO memberships (user_id,tenant_id,role,apps) VALUES (1,?,?,?)");
   for (const tenant of demoUser.tenants) {
     tenantStmt.run(tenant.id, tenant.name, tenant.shortName, tenant.location, tenant.deployment);
