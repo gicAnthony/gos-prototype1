@@ -162,9 +162,7 @@ button {
   display: grid;
   place-items: center;
   padding: 42px;
-  background:
-    radial-gradient(circle at 88% 10%, rgba(255, 193, 112, 0.34), transparent 32%),
-    linear-gradient(145deg, #f6921e, #d76c08 58%, #a94806);
+  background: linear-gradient(145deg, #111d2b, #080f18);
 }
 .login-card {
   width: min(430px, 100%);
