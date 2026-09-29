@@ -11,7 +11,7 @@ body {
     sans-serif;
 }
 :root {
-  --orange: #ff601a;
+  --orange: #f6921e;
   --ink: #07111d;
   --panel: rgba(8, 17, 28, 0.79);
   --line: rgba(157, 184, 211, 0.17);
@@ -162,16 +162,26 @@ button {
   display: grid;
   place-items: center;
   padding: 42px;
-  background: linear-gradient(145deg, #111d2b, #080f18);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255, 193, 112, 0.34), transparent 32%),
+    linear-gradient(145deg, #f6921e, #d76c08 58%, #a94806);
 }
 .login-card {
   width: min(430px, 100%);
+  padding: 38px;
+  border: 1px solid rgba(255, 196, 126, 0.58);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(91, 39, 7, 0.97), rgba(40, 24, 13, 0.97) 48%, rgba(12, 17, 25, 0.98));
+  box-shadow:
+    0 32px 80px rgba(76, 31, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
 }
 .signin-icon {
   width: 54px;
   height: 54px;
-  border: 1px solid rgba(255, 96, 26, 0.35);
-  background: rgba(255, 96, 26, 0.1);
+  border: 1px solid rgba(246, 146, 30, 0.62);
+  background: rgba(246, 146, 30, 0.16);
   border-radius: 15px;
   display: grid;
   place-items: center;
@@ -201,8 +211,8 @@ button {
   display: block;
   width: 100%;
   height: 52px;
-  border: 1px solid #273748;
-  background: #0b1521;
+  border: 1px solid rgba(246, 146, 30, 0.28);
+  background: rgba(7, 12, 18, 0.82);
   color: #fff;
   border-radius: 11px;
   padding: 0 14px;
@@ -211,7 +221,7 @@ button {
 }
 .login-card input:focus {
   border-color: var(--orange);
-  box-shadow: 0 0 0 3px rgba(255, 96, 26, 0.12);
+  box-shadow: 0 0 0 3px rgba(246, 146, 30, 0.18);
 }
 .password-field {
   position: relative;
@@ -238,18 +248,22 @@ button {
   display: flex;
   gap: 8px;
 }
+.login-options input {
+  accent-color: var(--orange);
+}
 .login-options button {
   background: none;
   border: 0;
-  color: #ff7a3d;
+  color: #f9a94f;
 }
 .primary-button {
   height: 53px;
   width: 100%;
   border: 0;
   border-radius: 11px;
-  background: linear-gradient(135deg, #ff731f, #eb4811);
-  box-shadow: 0 12px 32px rgba(255, 85, 20, 0.25);
+  background: linear-gradient(135deg, #ffad42, #f6921e 55%, #dc710a);
+  color: #241306;
+  box-shadow: 0 12px 32px rgba(246, 146, 30, 0.32);
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -262,8 +276,8 @@ button {
 }
 .demo-hint {
   margin-top: 18px;
-  border: 1px solid #263444;
-  background: #0b1520;
+  border: 1px solid rgba(246, 146, 30, 0.24);
+  background: rgba(13, 15, 18, 0.58);
   border-radius: 10px;
   padding: 12px;
   color: #8796a8;
