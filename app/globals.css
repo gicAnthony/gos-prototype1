@@ -167,9 +167,9 @@ button {
 .login-card {
   width: min(430px, 100%);
   padding: 38px;
-  border: 1px solid rgba(255, 196, 126, 0.58);
+  border: 1px solid rgba(157, 184, 211, 0.17);
   border-radius: 22px;
-  background: linear-gradient(145deg, rgba(91, 39, 7, 0.97), rgba(40, 24, 13, 0.97) 48%, rgba(12, 17, 25, 0.98));
+  background: linear-gradient(145deg, rgba(17, 29, 43, 0.97), rgba(8, 15, 24, 0.98));
   box-shadow:
     0 32px 80px rgba(76, 31, 0, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -260,7 +260,7 @@ button {
   border: 0;
   border-radius: 11px;
   background: linear-gradient(135deg, #ffad42, #f6921e 55%, #dc710a);
-  color: #241306;
+  color: #ffffff;
   box-shadow: 0 12px 32px rgba(246, 146, 30, 0.32);
   font-weight: 800;
   display: flex;
