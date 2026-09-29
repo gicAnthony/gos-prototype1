@@ -1,0 +1,121 @@
+Responsibility split
+
+GIC IAM
+   │
+   ├── WHO are you?
+   │   Which tenant are you associated with?
+   │   Establish authentication / identity / tenant context.
+   │
+   └── WHAT is this person allowed to do in the tenant?
+       Tenant users, groups, roles, permissions and access policies.
+       (Central. This is no longer held inside the tenant.)
+
+GOS MARKETPLACE
+   │
+   └── WHAT does this tenant want to buy?
+       Browse modules, choose the features within each module,
+       compare plans and tiers, trial, order, upgrade, downgrade.
+       Feeds the Subscription & Tier Manager and the Entitlement Engine.
+
+GOS CONTROL PLANE
+   │
+   └── WHAT has this tenant purchased?
+       Which modules, features, services and limits are enabled?
+       Issues the signed entitlement bundle each tenant runs against.
+
+TENANT VMS
+   │
+   └── WHAT can this vendor do inside this tenant?
+       Vendor organisations, vendor users, vendor roles, vendor
+       permissions, vendor onboarding, compliance and workflows.
+       (Vendors only. Tenant staff are governed by GIC IAM.)
+
+GOS TELEMETRY
+   │
+   └── WHAT is actually happening?
+       API calls, service usage, traces, logs, metrics, errors,
+       performance and business usage.
+
+
+Who owns which principal:
+
+   Tenant employee / administrator ──▶ GIC IAM
+                                       identity + roles + permissions
+
+   Vendor organisation / vendor user ─▶ GIC IAM       (identity only)
+                                      + Tenant VMS    (roles + permissions)
+
+
+Access rule:
+
+          GOS ENTITLEMENT
+          (module + feature bought in the Marketplace)
+                 ∩
+          GIC IAM IDENTITY
+          (authenticated, tenant context established)
+                 ∩
+          PERMISSION
+          ├── tenant user  →  GIC IAM role / permission
+          └── vendor user  →  VMS vendor role / permission
+                 ∩
+          RESOURCE POLICY
+          (record, document or data scope inside the tenant)
+                 │
+                 ▼
+          EFFECTIVE ACCESS
+
+   All four must agree. Any one of them saying no means no.
+
+
+Marketplace flow:
+
+Tenant admin
+  └── GOS Marketplace
+       ├── Module catalogue        (Project Admin, Signflow, DocuWeave, Echo)
+       ├── Features within module  (per-module add-ons and options)
+       ├── Plan / tier             (Standard, Professional, Enterprise)
+       └── Trial or buy
+                 │
+                 ▼
+       Subscription & Tier Manager      (billing, plan lifecycle)
+                 │
+                 ▼
+       Entitlement Engine               (module + feature grants, usage limits)
+                 │
+                 ▼
+       Signed entitlement bundle ──▶ Tenant Agent
+                 │
+                 ▼
+       Only entitled modules and features are provisioned,
+       mounted and routable inside the tenant.
+
+   Upgrades, downgrades and cancellations follow the same path,
+   so the running tenant always reflects what was bought.
+
+
+Operational View:
+
+Tenant
+  └── Application
+       └── Backend Service
+            └── API Endpoint
+                 ├── Request count
+                 ├── Success / failure
+                 ├── Latency
+                 ├── CPU / memory impact
+                 ├── Trace
+                 ├── Logs
+                 └── Usage / business event
+                          │
+                          ▼
+                 GOS Telemetry Gateway
+                          │
+                          ▼
+                   GOS Telemetry Hub
+                          │
+                          ▼
+                 Central Observability
+                          │
+                          ▼
+                 Marketplace usage signals
+                 (limit warnings, upgrade prompts, feature adoption)

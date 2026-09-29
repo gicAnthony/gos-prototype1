@@ -1,0 +1,122 @@
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                               GOS MULTI-TENANT PLATFORM ARCHITECTURE                                               │
+│                    Central Identity  •  Marketplace-Driven Entitlement  •  Isolated Tenants  •  Full Visibility                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ GOS CENTRAL CONTROL PLANE (platform managed)                                                                                       │
+│ Marketplace selections become subscriptions; subscriptions become signed entitlements.                                             │
+│                                                                                                                                    │
+│ ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐   │
+│ │ GIC IAM              │  │ TENANT REGISTRY      │  │ GOS MARKETPLACE      │  │ SUBSCRIPTION & TIER  │  │ ENTITLEMENT ENGINE   │   │
+│ │ Identity + tenant    │  │                      │  │ Tenant self-service  │  │ MANAGER              │  │                      │   │
+│ │ authorization        │  │ • Tenant onboarding  │  │                      │  │                      │  │ • Module access      │   │
+│ │                      │  │ • Tenant details     │  │ • Module catalogue   │  │ • Standard           │  │ • Feature flags      │   │
+│ │ • Authentication     │  │ • Infrastructure     │  │ • Features within    │  │ • Professional       │  │ • Service access     │   │
+│ │   (SSO)              │  │   location           │  │   modules            │  │ • Enterprise         │  │ • Usage limits       │   │
+│ │ • MFA & session      │  │ • Status & health    │  │ • Plans, tiers &     │  │ • Billing & usage    │  │ • Signed             │   │
+│ │   policy             │  │                      │  │   pricing            │  │ • Plan lifecycle     │  │   entitlements       │   │
+│ │ • Identity           │  │                      │  │ • Trials & demos     │  │                      │  │                      │   │
+│ │   federation         │  │                      │  │ • Basket, order,     │  │                      │  │                      │   │
+│ │ • Tenant context     │  │                      │  │   approve            │  │                      │  │                      │   │
+│ │ • Token issuance     │  │                      │  │ • Upgrade /          │  │                      │  │                      │   │
+│ │ • Tenant users &     │  │                      │  │   downgrade          │  │                      │  │                      │   │
+│ │   groups             │  │                      │  │ • Change history     │  │                      │  │                      │   │
+│ │ • Tenant roles &     │  │                      │  │                      │  │                      │  │                      │   │
+│ │   permissions        │  │                      │  │                      │  │                      │  │                      │   │
+│ │ • Joiner / mover /   │  │                      │  │                      │  │                      │  │                      │   │
+│ │   leaver             │  │                      │  │                      │  │                      │  │                      │   │
+│ └──────────────────────┘  └──────────────────────┘  └──────────────────────┘  └──────────────────────┘  └──────────────────────┘   │
+│                                                                                                                                    │
+│ ┌─────────────────────────────┐  ┌─────────────────────────────┐  ┌─────────────────────────────┐  ┌─────────────────────────────┐ │
+│ │ MODULE & SERVICE CATALOGUE  │  │ PROVISIONING &              │  │ CENTRAL OBSERVABILITY       │  │ GOVERNANCE & AUDIT          │ │
+│ │                             │  │ CONFIGURATION               │  │                             │  │                             │ │
+│ │ • Frontend modules          │  │                             │  │ • Metrics & traces (OTel)   │  │ • Audit logs                │ │
+│ │ • Feature definitions       │  │ • Service deployment        │  │ • Logs                      │  │ • Security events           │ │
+│ │ • Backend services          │  │ • Configuration             │  │ • Service usage analytics   │  │ • Compliance (ISO / SOC2)   │ │
+│ │ • Versions & dependencies   │  │ • Certificates & secrets    │  │ • Tenant dashboards         │  │ • Tenant activity           │ │
+│ │                             │  │ • Tenant agent distribution │  │ • Alerts & reporting        │  │ • Data retention            │ │
+│ └─────────────────────────────┘  └─────────────────────────────┘  └─────────────────────────────┘  └─────────────────────────────┘ │
+│                                                                                                                                    │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+                        │                                   │                                   │                         ▲
+                        │ IDENTITY + TENANT                 │ ENTITLEMENTS                      │ CONFIG / UPDATES        │ TELEMETRY
+                        │ ROLES & PERMISSIONS               │ (modules + features bought)       │                         │
+                        ▼                                   ▼                                   ▼                         │
+        ┌──────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────┐
+        │ AUTHENTICATE VIA GIC IAM     │  │ SIGNED ENTITLEMENT BUNDLE        │  │ SECURE CONTROL & DATA PLANE  │
+        │                              │  │                                  │  │                              │
+        │ • SSO / MFA                  │  │ • Modules bought in the          │  │ • mTLS                       │
+        │ • Tenant context             │  │   Marketplace                    │  │ • Config & updates           │
+        │ • Tenant roles & permissions │  │ • Features enabled per module    │  │ • Certificate rotation       │
+        │   in token                   │  │ • Usage limits                   │  │ • Health & status            │
+        │                              │  │ • Valid-until + signature        │  │                              │
+        └──────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────┘
+
+        GIC IAM establishes identity and the tenant's own roles and permissions.
+        Tenant VMS authorizes vendor organisations and vendor users only.
+
+┌──────────────────────────────────────────┐ ┌──────────────────────────────────────────┐ ┌──────────────────────────────────────────┐
+│ TENANT A ISOLATION DOMAIN                │ │ TENANT B ISOLATION DOMAIN                │ │ TENANT C ISOLATION DOMAIN                │
+│ GIC.co.za | on-premises                  │ │ RoyalKhalahari.co.za | cloud             │ │ Blaauwklippen.co.za | data centre        │
+│                                          │ │                                          │ │                                          │
+│ ┌─────────────────┐  ┌─────────────────┐ │ │ ┌─────────────────┐  ┌─────────────────┐ │ │ ┌─────────────────┐  ┌─────────────────┐ │
+│ │ TENANT AGENT    │  │ TELEMETRY       │ │ │ │ TENANT AGENT    │  │ TELEMETRY       │ │ │ │ TENANT AGENT    │  │ TELEMETRY       │ │
+│ │                 │  │ GATEWAY         │ │ │ │                 │  │ GATEWAY         │ │ │ │                 │  │ GATEWAY         │ │
+│ │ • Entitlements  │  │                 │ │ │ │ • Entitlements  │  │                 │ │ │ │ • Entitlements  │  │                 │ │
+│ │ • Config &      │  │ • API           │ │ │ │ • Config &      │  │ • API           │ │ │ │ • Config &      │  │ • API           │ │
+│ │   updates       │  │   transactions  │ │ │ │   updates       │  │   transactions  │ │ │ │   updates       │  │   transactions  │ │
+│ │ • Health &      │  │ • OTel metrics, │ │ │ │ • Health &      │  │ • OTel metrics, │ │ │ │ • Health &      │  │ • OTel metrics, │ │
+│ │   status        │  │   traces, logs  │ │ │ │   status        │  │   traces, logs  │ │ │ │   status        │  │   traces, logs  │ │
+│ │                 │  │ • Offline       │ │ │ │                 │  │ • Offline       │ │ │ │                 │  │ • Offline       │ │
+│ │                 │  │   buffer        │ │ │ │                 │  │   buffer        │ │ │ │                 │  │   buffer        │ │
+│ └─────────────────┘  └─────────────────┘ │ │ └─────────────────┘  └─────────────────┘ │ │ └─────────────────┘  └─────────────────┘ │
+│                                          │ │                                          │ │                                          │
+│ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │
+│ │ TENANT IDENTITY & ACCESS             │ │ │ │ TENANT IDENTITY & ACCESS             │ │ │ │ TENANT IDENTITY & ACCESS             │ │
+│ │ governed centrally by GIC IAM        │ │ │ │ governed centrally by GIC IAM        │ │ │ │ governed centrally by GIC IAM        │ │
+│ │                                      │ │ │ │                                      │ │ │ │                                      │ │
+│ │ • Tenant users, groups, roles and    │ │ │ │ • Tenant users, groups, roles and    │ │ │ │ • Tenant users, groups, roles and    │ │
+│ │   permissions come from GIC IAM      │ │ │ │   permissions come from GIC IAM      │ │ │ │   permissions come from GIC IAM      │ │
+│ │ • Token claims enforced locally      │ │ │ │ • Token claims enforced locally      │ │ │ │ • Token claims enforced locally      │ │
+│ │ • No local user directory            │ │ │ │ • No local user directory            │ │ │ │ • No local user directory            │ │
+│ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │
+│                                          │ │                                          │ │                                          │
+│ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │
+│ │ VENDOR MANAGEMENT SYSTEM (VMS)       │ │ │ │ VENDOR MANAGEMENT SYSTEM (VMS)       │ │ │ │ VENDOR MANAGEMENT SYSTEM (VMS)       │ │
+│ │ vendor domain only · no tenant staff │ │ │ │ vendor domain only · no tenant staff │ │ │ │ vendor domain only · no tenant staff │ │
+│ │                                      │ │ │ │                                      │ │ │ │                                      │ │
+│ │ • Vendor organisations               │ │ │ │ • Vendor organisations               │ │ │ │ • Vendor organisations               │ │
+│ │ • Vendor users                       │ │ │ │ • Vendor users                       │ │ │ │ • Vendor users                       │ │
+│ │ • Vendor roles & permissions         │ │ │ │ • Vendor roles & permissions         │ │ │ │ • Vendor roles & permissions         │ │
+│ │ • Vendor onboarding & compliance     │ │ │ │ • Vendor onboarding & compliance     │ │ │ │ • Vendor onboarding & compliance     │ │
+│ │ • Vendor policies & workflows        │ │ │ │ • Vendor policies & workflows        │ │ │ │ • Vendor policies & workflows        │ │
+│ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │
+│                                          │ │                                          │ │                                          │
+│ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │ │ ┌──────────────────────────────────────┐ │
+│ │ MODULES & SERVICES                   │ │ │ │ MODULES & SERVICES                   │ │ │ │ MODULES & SERVICES                   │ │
+│ │ mounted only if entitled             │ │ │ │ mounted only if entitled             │ │ │ │ mounted only if entitled             │ │
+│ │                                      │ │ │ │                                      │ │ │ │                                      │ │
+│ │ FE  Project Admin • Signflow         │ │ │ │ FE  Project Admin • Signflow         │ │ │ │ FE  Project Admin • Signflow         │ │
+│ │     DocuWeave • Echo                 │ │ │ │     DocuWeave • Echo                 │ │ │ │     DocuWeave • Echo                 │ │
+│ │ BE  sio-document-service • echo-api  │ │ │ │ BE  sio-document-service • echo-api  │ │ │ │ BE  sio-document-service • echo-api  │ │
+│ │     integration-service • nexus-api  │ │ │ │     integration-service • nexus-api  │ │ │ │     integration-service • nexus-api  │ │
+│ │ DB  isolated schema • encrypted      │ │ │ │ DB  isolated schema • encrypted      │ │ │ │ DB  isolated schema • encrypted      │ │
+│ │     tenant-owned data                │ │ │ │     tenant-owned data                │ │ │ │     tenant-owned data                │ │
+│ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │ │ └──────────────────────────────────────┘ │
+│                                          │ │                                          │ │                                          │
+└──────────────────────────────────────────┘ └──────────────────────────────────────────┘ └──────────────────────────────────────────┘
+
+                      │                                            │                                            │
+                      └────────────────────────────────────────────┴────────────────────────────────────────────┘
+                                                                   │  TELEMETRY (OTel)
+                                                                   ▼
+                                                   ┌──────────────────────────────┐
+                                                   │      GOS TELEMETRY HUB       │
+                                                   └──────────────────────────────┘
+                                                                   │
+                                                                   ▼
+                                                   ┌──────────────────────────────┐
+                                                   │    CENTRAL OBSERVABILITY     │
+                                                   └──────────────────────────────┘

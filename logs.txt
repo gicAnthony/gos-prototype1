@@ -1,0 +1,3 @@
+We are building a web based OS that can be seen in main.png and has the ability to change background image as can be seen in bg_image.png, the rest of the files in this folder is the architectural approach we are taking on this.
+A user should be able to log into the 3 tenants with different roles and permissions. testing username should be anthony@gic.co.za, you can figure out the password, because this is a demo sqllite should suffice.
+The stack should be Next.js (React 19, Typescript, Tailwind, shadcn/ui,@sylonik, motion, zustand). create a professional user journey
