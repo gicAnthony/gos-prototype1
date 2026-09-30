@@ -1,4 +1,4 @@
-// File: C:\Users\ManakaAnthonyRaphash\Documents\work_resources_acess\GOS\prototype\app\layout.tsx
+// File: /home/anthonyr/Desktop/work_resources_acess/GOS/prototype/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

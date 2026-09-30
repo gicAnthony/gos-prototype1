@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   Bell,
   Building2,
   Check,
@@ -33,47 +34,29 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import type { User } from "@/lib/types";
+import type { Subscription, User } from "@/lib/types";
+import type { CatalogueModule } from "@/lib/types";
+import { catalogue, catalogueById } from "@/lib/catalogue";
+import { evaluateAccess, issueEntitlementBundle } from "@/lib/entitlements";
+import { auditEvent } from "@/lib/control-plane";
 import { useGOSStore } from "@/lib/store";
 import { Logo } from "./logo";
 
-const appData = [
-  {
-    id: "project",
-    name: "Project Admin",
-    description: "Projects and delivery",
-    Icon: FolderKanban,
-    tone: "orange",
-  },
-  {
-    id: "documents",
-    name: "DocuWeave",
-    description: "Documents and work",
-    Icon: FileText,
-    tone: "purple",
-  },
-  {
-    id: "signflow",
-    name: "Signflow",
-    description: "Digital signatures",
-    Icon: PenLine,
-    tone: "blue",
-  },
-  {
-    id: "vendors",
-    name: "Vendor Management",
-    description: "Vendors and compliance",
-    Icon: UsersRound,
-    tone: "green",
-  },
-  {
-    id: "echo",
-    name: "Echo",
-    description: "AI collaboration",
-    Icon: MessageCircleMore,
-    tone: "slate",
-  },
-];
+const moduleIcons = {
+  project: FolderKanban,
+  documents: FileText,
+  signflow: PenLine,
+  vendors: UsersRound,
+  echo: MessageCircleMore,
+  "risk-atlas": ShieldCheck,
+  "people-hub": UsersRound,
+  pulse: Zap,
+  boardroom: Building2,
+};
+const appData = catalogue.map((item) => ({
+  ...item,
+  Icon: moduleIcons[item.id as keyof typeof moduleIcons] ?? Grid2X2,
+}));
 const wallpapers = [
   { id: "aurora", name: "Midnight aurora" },
   { id: "mountain", name: "Mountain" },
@@ -91,40 +74,6 @@ const nav = [
   { label: "Vendors", Icon: Building2 },
   { label: "Marketplace", Icon: ShoppingBag },
 ];
-const marketApps = [
-  {
-    name: "Risk Atlas",
-    category: "Governance",
-    description: "Live enterprise risk registers and controls.",
-    Icon: ShieldCheck,
-    tone: "orange",
-    price: "R1 490 / month",
-  },
-  {
-    name: "People Hub",
-    category: "Workforce",
-    description: "A connected directory, leave and team insights.",
-    Icon: UsersRound,
-    tone: "purple",
-    price: "R890 / month",
-  },
-  {
-    name: "Pulse Analytics",
-    category: "Intelligence",
-    description: "Turn operational signals into decisions.",
-    Icon: Zap,
-    tone: "blue",
-    price: "14-day trial",
-  },
-  {
-    name: "Boardroom",
-    category: "Collaboration",
-    description: "Secure agendas, packs, minutes and resolutions.",
-    Icon: Building2,
-    tone: "green",
-    price: "R1 190 / month",
-  },
-];
 
 export function Workspace({ user }: { user: User }) {
   const router = useRouter(),
@@ -137,6 +86,10 @@ export function Workspace({ user }: { user: User }) {
       setMode,
       accent,
       setAccent,
+      subscriptions,
+      startTrial,
+      cancelModule,
+      recordAccess,
     } = useGOSStore();
   const [tenantOpen, setTenantOpen] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
@@ -144,18 +97,23 @@ export function Workspace({ user }: { user: User }) {
     [query, setQuery] = useState(""),
     [now, setNow] = useState<Date | null>(null),
     [toast, setToast] = useState(""),
-    [view, setView] = useState<"home" | "marketplace">("home");
+    [view, setView] = useState<"home" | "apps" | "marketplace">("home");
   const tenant = user.tenants.find((t) => t.id === tenantId) ?? user.tenants[0];
+  const tenantSubscriptions = subscriptions[tenant.id] ?? [];
+  const bundle = useMemo(
+    () => issueEntitlementBundle(tenant.id, tenantSubscriptions, now ?? new Date()),
+    [tenant.id, tenantSubscriptions, now],
+  );
   const apps = useMemo(
     () =>
       appData.filter(
         (a) =>
-          tenant.apps.includes(a.id) &&
+          bundle.grants.some((grant) => grant.moduleId === a.id) &&
           `${a.name} ${a.description}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
-    [tenant, query],
+    [bundle, query],
   );
   useEffect(() => {
     setNow(new Date());
@@ -166,9 +124,41 @@ export function Workspace({ user }: { user: User }) {
     setToast(name);
     setTimeout(() => setToast(""), 2400);
   }
+  function launchModule(moduleId: string) {
+    const item = catalogueById[moduleId];
+    const decision = evaluateAccess(bundle, {
+      tenantId: tenant.id,
+      moduleId,
+      identity: {
+        authenticated: true,
+        tenantId: tenant.id,
+        principalType: "tenant-user",
+      },
+      permissionGranted: true,
+      resourcePolicyGranted: true,
+    });
+    recordAccess(
+      auditEvent(
+        tenant.id,
+        user.email,
+        "module.launch",
+        moduleId,
+        decision.allowed
+          ? `${item?.name ?? moduleId} passed entitlement, identity, permission and resource-policy checks.`
+          : `Launch denied: ${decision.reason}.`,
+        decision.allowed ? "success" : "denied",
+      ),
+    );
+    launch(
+      decision.allowed
+        ? `${item?.name ?? moduleId} launched with verified access`
+        : `Access denied: ${decision.reason}`,
+    );
+  }
   function navigate(label: string) {
     setMobileNav(false);
     if (label === "Home") setView("home");
+    else if (label === "Apps") setView("apps");
     else if (label === "Marketplace") setView("marketplace");
     else launch(`${label} is ready to launch`);
   }
@@ -192,6 +182,7 @@ export function Workspace({ user }: { user: User }) {
               key={label}
               className={
                 (view === "home" && label === "Home") ||
+                (view === "apps" && label === "Apps") ||
                 (view === "marketplace" && label === "Marketplace")
                   ? "active"
                   : ""
@@ -298,15 +289,35 @@ export function Workspace({ user }: { user: User }) {
               tenant={tenant}
               apps={apps}
               now={now}
-              launch={launch}
+              launchModule={launchModule}
               openMarket={() => setView("marketplace")}
+              openApps={() => setView("apps")}
+            />
+          ) : view === "apps" ? (
+            <AppsView
+              key="apps"
+              tenant={tenant.name}
+              subscriptions={tenantSubscriptions}
+              onLaunch={launchModule}
+              onUninstall={(moduleId) => {
+                const name = catalogueById[moduleId]?.name ?? moduleId;
+                cancelModule(tenant.id, moduleId, user.email);
+                launch(`${name} uninstalled and access revoked`);
+              }}
+              onMarketplace={() => setView("marketplace")}
             />
           ) : (
             <Marketplace
               key="market"
               tenant={tenant.name}
+              subscriptions={tenantSubscriptions}
               onBack={() => setView("home")}
-              onAdd={launch}
+              onInstall={(moduleId, features) => {
+                const name = catalogueById[moduleId]?.name ?? moduleId;
+                startTrial(tenant.id, moduleId, features, user.email);
+                launch(`${name} installed with ${features.length} selected features`);
+              }}
+              onManage={() => setView("apps")}
             />
           )}
         </AnimatePresence>
@@ -351,15 +362,17 @@ function HomeView({
   tenant,
   apps,
   now,
-  launch,
+  launchModule,
   openMarket,
+  openApps,
 }: {
   user: User;
   tenant: User["tenants"][number];
   apps: typeof appData;
   now: Date | null;
-  launch: (s: string) => void;
+  launchModule: (moduleId: string) => void;
   openMarket: () => void;
+  openApps: () => void;
 }) {
   return (
     <motion.div
@@ -412,7 +425,7 @@ function HomeView({
       </div>
       <div className="section-head">
         <h2>Your workspace</h2>
-        <button onClick={() => launch("App library is ready to launch")}>
+        <button onClick={openApps}>
           Open app library <ArrowRight />
         </button>
       </div>
@@ -425,7 +438,7 @@ function HomeView({
             whileHover={{ y: -7 }}
             key={a.id}
             className={`app-card ${a.tone}`}
-            onClick={() => launch(`${a.name} is ready to launch`)}
+            onClick={() => launchModule(a.id)}
           >
             <span className="app-icon">
               <a.Icon />
@@ -508,7 +521,7 @@ function HomeView({
           <div className="metric">
             <Grid2X2 />
             <span>
-              Applications<strong>{tenant.apps.length}</strong>
+              Applications<strong>{apps.length}</strong>
             </span>
           </div>
           <div className="metric">
@@ -577,9 +590,9 @@ function Dock({
   onNavigate,
   onLaunch,
 }: {
-  active: "home" | "marketplace";
+  active: "home" | "apps" | "marketplace";
   onSettings: () => void;
-  onNavigate: (v: "home" | "marketplace") => void;
+  onNavigate: (v: "home" | "apps" | "marketplace") => void;
   onLaunch: (s: string) => void;
 }) {
   return (
@@ -597,6 +610,7 @@ function Dock({
           whileTap={{ scale: 0.94 }}
           className={
             (n === "Home" && active === "home") ||
+            (n === "Apps" && active === "apps") ||
             (n === "Marketplace" && active === "marketplace")
               ? "active"
               : ""
@@ -607,6 +621,8 @@ function Dock({
               ? onSettings()
               : n === "Home"
                 ? onNavigate("home")
+                : n === "Apps"
+                  ? onNavigate("apps")
                 : n === "Marketplace"
                   ? onNavigate("marketplace")
                   : onLaunch(`${n} is ready to launch`)
@@ -621,13 +637,18 @@ function Dock({
 }
 function Marketplace({
   tenant,
+  subscriptions,
   onBack,
-  onAdd,
+  onInstall,
+  onManage,
 }: {
   tenant: string;
+  subscriptions: Subscription[];
   onBack: () => void;
-  onAdd: (s: string) => void;
+  onInstall: (moduleId: string, features: string[]) => void;
+  onManage: () => void;
 }) {
+  const [installing, setInstalling] = useState<CatalogueModule | null>(null);
   return (
     <motion.div
       className="market-view content"
@@ -656,16 +677,22 @@ function Marketplace({
       <div className="market-toolbar">
         <div>
           <strong>Explore modules</strong>
-          <span>{marketApps.length} curated products</span>
+          <span>{catalogue.length} curated products · installs activate immediately</span>
         </div>
         <button>
           All categories <ChevronDown />
         </button>
       </div>
       <div className="market-grid">
-        {marketApps.map((app, i) => (
+        {appData.map((app, i) => {
+          const installed = subscriptions.some(
+            (subscription) =>
+              subscription.moduleId === app.id && subscription.status !== "cancelled",
+          );
+          const startingPrice = app.plans[0].monthlyPrice.toLocaleString("en-ZA");
+          return (
           <motion.article
-            key={app.name}
+            key={app.id}
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
@@ -677,14 +704,268 @@ function Marketplace({
             <h2>{app.name}</h2>
             <p>{app.description}</p>
             <footer>
-              <strong>{app.price}</strong>
-              <button onClick={() => onAdd(`${app.name} added to your trial`)}>
-                Add <ArrowRight />
+              <strong>From R{startingPrice} / month</strong>
+              <button
+                className={installed ? "installed" : ""}
+                onClick={() => (installed ? onManage() : setInstalling(app))}
+              >
+                {installed ? <><BadgeCheck /> Installed</> : <>Install trial <ArrowRight /></>}
               </button>
             </footer>
           </motion.article>
-        ))}
+          );
+        })}
       </div>
+      <AnimatePresence>
+        {installing && (
+          <FeatureInstaller
+            key={installing.id}
+            module={installing}
+            onClose={() => setInstalling(null)}
+            onInstall={(features) => {
+              onInstall(installing.id, features);
+              setInstalling(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function FeatureInstaller({
+  module,
+  onClose,
+  onInstall,
+}: {
+  module: CatalogueModule;
+  onClose: () => void;
+  onInstall: (features: string[]) => void;
+}) {
+  const professionalPlan = module.plans.find((plan) => plan.id === "professional")!;
+  const available = module.featureDefinitions.filter((feature) =>
+    professionalPlan.features.includes(feature.id),
+  );
+  const [selected, setSelected] = useState<string[]>([]);
+  const [pending, setPending] = useState<{
+    featureId: string;
+    dependencies: string[];
+  } | null>(null);
+
+  function allDependencies(featureId: string, found = new Set<string>()): string[] {
+    const definition = module.featureDefinitions.find((feature) => feature.id === featureId);
+    for (const dependency of definition?.dependsOn ?? []) {
+      if (!found.has(dependency)) {
+        found.add(dependency);
+        allDependencies(dependency, found);
+      }
+    }
+    return [...found];
+  }
+
+  function toggleFeature(featureId: string) {
+    if (selected.includes(featureId)) {
+      const requiredBy = selected.filter((selectedId) =>
+        allDependencies(selectedId).includes(featureId),
+      );
+      if (requiredBy.length === 0) {
+        setSelected((current) => current.filter((id) => id !== featureId));
+      }
+      return;
+    }
+    const dependencies = allDependencies(featureId).filter(
+      (dependency) => !selected.includes(dependency),
+    );
+    if (dependencies.length > 0) {
+      setPending({ featureId, dependencies });
+      return;
+    }
+    setSelected((current) => [...current, featureId]);
+  }
+
+  function nameFor(featureId: string) {
+    return module.featureDefinitions.find((feature) => feature.id === featureId)?.name ?? featureId;
+  }
+
+  return (
+    <motion.div
+      className="feature-installer-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.section
+        className="feature-installer"
+        initial={{ scale: 0.95, y: 18 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95, y: 18 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feature-installer-title"
+      >
+        <header>
+          <div>
+            <span className="eyebrow">CONFIGURE MODULE</span>
+            <h2 id="feature-installer-title">Choose {module.name} features</h2>
+            <p>Only selected features and their required dependencies will be entitled.</p>
+          </div>
+          <button aria-label="Close feature selection" onClick={onClose}><X /></button>
+        </header>
+        <div className="installer-plan">
+          <div>
+            <strong>Professional trial</strong>
+            <span>14 days · R{professionalPlan.monthlyPrice.toLocaleString("en-ZA")} / month afterwards</span>
+          </div>
+          <b>{selected.length} of {available.length} selected</b>
+        </div>
+        <div className="feature-options">
+          {available.map((feature) => {
+            const requiredBy = selected.filter((selectedId) =>
+              allDependencies(selectedId).includes(feature.id),
+            );
+            const isSelected = selected.includes(feature.id);
+            return (
+              <button
+                type="button"
+                key={feature.id}
+                className={isSelected ? "selected" : ""}
+                onClick={() => toggleFeature(feature.id)}
+                aria-pressed={isSelected}
+              >
+                <span className="feature-check">{isSelected && <Check />}</span>
+                <div>
+                  <strong>{feature.name}</strong>
+                  <p>{feature.description}</p>
+                  {feature.dependsOn.length > 0 && (
+                    <small>Requires {feature.dependsOn.map(nameFor).join(" + ")}</small>
+                  )}
+                  {isSelected && requiredBy.length > 0 && (
+                    <small className="required-by">Required by {requiredBy.map(nameFor).join(", ")}</small>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {pending && (
+          <motion.div className="dependency-prompt" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            <ShieldCheck />
+            <div>
+              <strong>{nameFor(pending.featureId)} needs other features</strong>
+              <p>
+                To function correctly it also requires {pending.dependencies.map(nameFor).join(", ")}.
+                Would you like to include them?
+              </p>
+              <div>
+                <button
+                  onClick={() => {
+                    setSelected((current) => [
+                      ...new Set([...current, ...pending.dependencies, pending.featureId]),
+                    ]);
+                    setPending(null);
+                  }}
+                >
+                  Include required features
+                </button>
+                <button onClick={() => setPending(null)}>Choose another feature</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        <footer>
+          <button className="installer-cancel" onClick={onClose}>Cancel</button>
+          <button
+            className="installer-confirm"
+            disabled={selected.length === 0 || pending !== null}
+            onClick={() => onInstall(selected)}
+          >
+            Install {selected.length || "selected"} feature{selected.length === 1 ? "" : "s"}
+            <ArrowRight />
+          </button>
+        </footer>
+      </motion.section>
+    </motion.div>
+  );
+}
+
+function AppsView({
+  tenant,
+  subscriptions,
+  onLaunch,
+  onUninstall,
+  onMarketplace,
+}: {
+  tenant: string;
+  subscriptions: Subscription[];
+  onLaunch: (moduleId: string) => void;
+  onUninstall: (moduleId: string) => void;
+  onMarketplace: () => void;
+}) {
+  const installed = subscriptions.filter(
+    (subscription) => subscription.status !== "cancelled",
+  );
+  return (
+    <motion.div
+      className="content apps-view"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+    >
+      <div className="apps-heading">
+        <div>
+          <span className="eyebrow">TENANT APPLICATIONS</span>
+          <h1>Apps installed for {tenant}</h1>
+          <p>Each app below has an active, signed tenant entitlement.</p>
+        </div>
+        <button onClick={onMarketplace}><ShoppingBag /> Browse Marketplace</button>
+      </div>
+      <div className="installed-grid">
+        {installed.map((subscription) => {
+          const app = catalogueById[subscription.moduleId];
+          if (!app) return null;
+          const Icon = moduleIcons[app.id as keyof typeof moduleIcons] ?? Grid2X2;
+          return (
+            <motion.article layout key={app.id} className="installed-app">
+              <span className={`market-icon ${app.tone}`}><Icon /></span>
+              <div className="installed-copy">
+                <small>{app.category}</small>
+                <h2>{app.name}</h2>
+                <p>{app.description}</p>
+                <div className="entitlement-meta">
+                  <span><BadgeCheck /> {subscription.status === "trial" ? "Trial" : "Active"}</span>
+                  <span>{subscription.planId} plan</span>
+                  <span>Valid to {new Date(subscription.validUntil).toLocaleDateString("en-ZA")}</span>
+                </div>
+                <div className="enabled-features">
+                  {(subscription.selectedFeatures ??
+                    app.plans.find((plan) => plan.id === subscription.planId)?.features ??
+                    []).map((featureId) => (
+                    <span key={featureId}>
+                      {app.featureDefinitions.find((feature) => feature.id === featureId)?.name ?? featureId}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="installed-actions">
+                <button className="launch-app" onClick={() => onLaunch(app.id)}>
+                  Launch <ArrowRight />
+                </button>
+                <button className="uninstall-app" onClick={() => onUninstall(app.id)}>
+                  Uninstall
+                </button>
+              </div>
+            </motion.article>
+          );
+        })}
+      </div>
+      {installed.length === 0 && (
+        <div className="empty-apps">
+          <Grid2X2 />
+          <h2>No apps installed</h2>
+          <p>Install a module from the Marketplace to add it to this tenant.</p>
+          <button onClick={onMarketplace}>Open Marketplace</button>
+        </div>
+      )}
     </motion.div>
   );
 }
